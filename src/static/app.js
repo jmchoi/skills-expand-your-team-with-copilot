@@ -568,8 +568,13 @@ document.addEventListener("DOMContentLoaded", () => {
           </div>
         `
         }
+        <button class="share-button" data-activity="${name}" aria-label="Share this activity">📤 Share</button>
       </div>
     `;
+
+    // Add click handler for share button
+    const shareButton = activityCard.querySelector(".share-button");
+    shareButton.addEventListener("click", () => shareActivity(name, details));
 
     // Add click handlers for delete buttons
     const deleteButtons = activityCard.querySelectorAll(".delete-participant");
@@ -797,6 +802,81 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
     );
+  }
+
+  // Share an activity with friends
+  function shareActivity(name, details) {
+    const shareUrl = `${window.location.origin}${window.location.pathname}?activity=${encodeURIComponent(name)}`;
+    const shareText = `Check out "${name}" at Mergington High School! ${details.description}`;
+
+    if (navigator.share) {
+      navigator.share({
+        title: `${name} - Mergington High School`,
+        text: shareText,
+        url: shareUrl,
+      }).catch((err) => {
+        if (err.name !== "AbortError") {
+          console.error("Error sharing activity:", err);
+        }
+      });
+    } else {
+      showShareFallback(name, shareUrl, shareText);
+    }
+  }
+
+  // Show share fallback modal for browsers without Web Share API
+  function showShareFallback(name, shareUrl, shareText) {
+    let sharePopup = document.getElementById("share-popup");
+    if (!sharePopup) {
+      sharePopup = document.createElement("div");
+      sharePopup.id = "share-popup";
+      sharePopup.className = "modal hidden";
+      sharePopup.innerHTML = `
+        <div class="modal-content">
+          <span class="close-share-popup">&times;</span>
+          <h3>Share Activity</h3>
+          <p id="share-activity-name" class="share-activity-name"></p>
+          <div class="share-options">
+            <button class="share-option-btn" id="copy-link-btn">📋 Copy Link</button>
+            <a class="share-option-btn" id="twitter-share-btn" target="_blank" rel="noopener noreferrer">🐦 Twitter</a>
+            <a class="share-option-btn" id="facebook-share-btn" target="_blank" rel="noopener noreferrer">📘 Facebook</a>
+          </div>
+          <p id="copy-confirmation" class="copy-confirmation hidden">✅ Link copied!</p>
+        </div>
+      `;
+      document.body.appendChild(sharePopup);
+
+      sharePopup.querySelector(".close-share-popup").addEventListener("click", () => {
+        closeSharePopup(sharePopup);
+      });
+      sharePopup.addEventListener("click", (e) => {
+        if (e.target === sharePopup) closeSharePopup(sharePopup);
+      });
+      sharePopup.querySelector("#copy-link-btn").addEventListener("click", () => {
+        const url = sharePopup.querySelector("#copy-link-btn").dataset.url;
+        navigator.clipboard.writeText(url).then(() => {
+          const confirmation = sharePopup.querySelector("#copy-confirmation");
+          confirmation.classList.remove("hidden");
+          setTimeout(() => confirmation.classList.add("hidden"), 2000);
+        });
+      });
+    }
+
+    sharePopup.querySelector("#share-activity-name").textContent = name;
+    sharePopup.querySelector("#copy-link-btn").dataset.url = shareUrl;
+    sharePopup.querySelector("#twitter-share-btn").href =
+      `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
+    sharePopup.querySelector("#facebook-share-btn").href =
+      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
+
+    sharePopup.classList.remove("hidden");
+    setTimeout(() => sharePopup.classList.add("show"), 10);
+  }
+
+  // Close share popup
+  function closeSharePopup(popup) {
+    popup.classList.remove("show");
+    setTimeout(() => popup.classList.add("hidden"), 300);
   }
 
   // Show message function
